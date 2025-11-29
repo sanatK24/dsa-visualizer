@@ -1075,7 +1075,7 @@ function App() {
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => closeBatchWithAnimation()}>
               <div style={{ background: 'white', padding: '2rem', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minWidth: 420 }} onClick={(e) => e.stopPropagation()}>
                 <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Batch Operations</h3>
-                <p style={{ fontSize: '0.875rem', color: '#6c757d', marginBottom: '1rem' }}>Enter numbers separated by commas or spaces</p>
+                <p style={{ fontSize: '0.875rem', color: '#6c757d', marginBottom: '1rem' }}>Enter multiple values separated by commas or spaces</p>
 
                 <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1092,16 +1092,24 @@ function App() {
                   type="text"
                   value={multiInput}
                   onChange={(e) => setMultiInput(e.target.value)}
-                  placeholder="e.g., 5,10,15 or 5 10 15"
+                  placeholder={`Enter multiple values (e.g., ${batchOp === 'INSERT' ? '5, 10, 15, 20' : '5, 10, 15'})`}
                   style={{ width: '100%', padding: '0.75rem', border: '1px solid #ced4da', borderRadius: 4, marginBottom: '1rem', fontSize: '0.875rem' }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (batchOp === 'INSERT') handleInsertBatch();
+                      else handleDeleteBatch();
+                      closeBatchWithAnimation();
+                    }
+                  }}
+                  autoFocus
                 />
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                   <button onClick={() => {
                     if (batchOp === 'INSERT') handleInsertBatch();
                     else handleDeleteBatch();
                     closeBatchWithAnimation();
-                  }}>{batchOp === 'INSERT' ? 'Apply Batch Insert' : 'Apply Batch Delete'}</button>
-                  <button onClick={() => { closeBatchWithAnimation(); setMultiInput(''); }} className="secondary">Close</button>
+                  }} className="primary">{batchOp === 'INSERT' ? 'Batch Insert' : 'Batch Delete'}</button>
+                  <button onClick={() => { closeBatchWithAnimation(); setMultiInput(''); }} className="secondary">Cancel</button>
                 </div>
               </div>
             </div>
