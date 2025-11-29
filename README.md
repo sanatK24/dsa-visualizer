@@ -1,3 +1,33 @@
+# DSA Visualizer
+
+A React + TypeScript + Vite application for visualizing Data Structures and Algorithms.
+
+## Features
+
+- Red-Black Tree Visualizer
+- Matrix Chain Multiplication Visualizer
+- Step-by-step algorithm visualization
+- PDF export functionality
+
+## Deployment
+
+This project is deployed on GitHub Pages at: https://sanatk24.github.io/dsa-visualizer/
+
+## Development
+
+```bash
+npm install
+npm run dev
+```
+
+## Build
+
+```bash
+npm run build
+```
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
