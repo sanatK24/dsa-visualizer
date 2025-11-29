@@ -10,10 +10,12 @@ type Topic = {
   category?: 'rbt' | 'mcm' | string;
 };
 
+const BASE_URL = import.meta.env.BASE_URL;
+
 const FALLBACK_TOPICS: Topic[] = [
-  { id: 'red_black_tree', title: 'Red-Black Tree Overview', md: '/dsa-theory/red_black_tree.md', pdf: '/data/rbt_notes.pdf', category: 'rbt' },
-  { id: 'rotations', title: 'Rotations (Left / Right)', md: '/dsa-theory/rotations.md', pdf: '/data/rbt_rotations.pdf', category: 'rbt' },
-  { id: 'properties', title: 'RBT Properties', md: '/dsa-theory/properties.md', pdf: '/data/rbt_properties.pdf', category: 'rbt' }
+  { id: 'red_black_tree', title: 'Red-Black Tree Overview', md: `${BASE_URL}dsa-theory/red_black_tree.md`, pdf: `${BASE_URL}data/rbt_notes.pdf`, category: 'rbt' },
+  { id: 'rotations', title: 'Rotations (Left / Right)', md: `${BASE_URL}dsa-theory/rotations.md`, pdf: `${BASE_URL}data/rbt_rotations.pdf`, category: 'rbt' },
+  { id: 'properties', title: 'RBT Properties', md: `${BASE_URL}dsa-theory/properties.md`, pdf: `${BASE_URL}data/rbt_properties.pdf`, category: 'rbt' }
 ];
 
 type LeftPanelProps = {
@@ -31,7 +33,7 @@ export default function LeftPanel({ collapsed = false, selectedTopicId, onTopicC
 
   // Load topics list dynamically from public/dsa-theory/topics.json if available
   useEffect(() => {
-    fetch('/dsa-theory/topics.json')
+    fetch(`${BASE_URL}dsa-theory/topics.json`)
       .then(res => {
         if (!res.ok) return null;
         return res.json();
