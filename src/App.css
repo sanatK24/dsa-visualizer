@@ -1,97 +1,329 @@
-#root {
-  width: 100%;
-  height: 100vh;
-  margin: 0;
-  padding: 0;
-  text-align: left;
-  overflow: hidden;
-}
+/* App.css */
 
+:root {
+  /* Primary blue colors. Update these to recolour the app's blue accents. */
+  --blue: #0369a1; /* professional blue */
+  --blue-dark: #1e3a8a; /* deep navy blue for reveal states */
+  --blue-contrast: #ffffff;
+}
 .app-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
   width: 100vw;
-  background-color: #f3f4f6;
+  height: 100vh;
+  overflow: hidden;
+  background: #ffffff;
+  color: #1f2937;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 .app-header {
-  background-color: #ffffff;
-  padding: 1rem;
-  border-bottom: 1px solid #e5e7eb;
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem; /* slightly increased padding for breathing room */
+  background: #f8f9fa;
+  color: #212529;
+  border-bottom: 1px solid #dee2e6;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 100;
+  overflow: visible; /* allow tooltips to escape the header bounds */
+  transition: background 0.45s cubic-bezier(0.2,0.8,0.2,1), color 0.28s ease;
 }
 
-.app-header .header-left { display:flex; align-items:center; gap:0.75rem; }
-.app-header .header-right { display:flex; align-items:center; margin-left:auto; }
+/* Batch active theme: full blue header with white text */
+.app-header.batch-active {
+  background: linear-gradient(135deg, #1e3a8a 0%, #0369a1 100%);
+  color: var(--blue-contrast);
+  transition: background 0.6s cubic-bezier(0.65, 0, 0.35, 1), color 0.3s;
+  overflow: hidden; /* clip the expanding layer to header only */
+}
+.app-header.batch-active h1 {
+  color: var(--blue-contrast);
+}
+
+/* Expanding color layer used for the reveal animation (contained in header)
+   Positioned absolutely inside the header so it only affects the header area. */
+.batch-color-layer {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1e3a8a 0%, #0369a1 100%);
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.2, 1);
+  z-index: 1; /* sits above header background but below content */
+}
+
+.batch-color-layer.active {
+  will-change: transform;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem; /* slightly larger gap between left items */
+}
+
+/* Ensure header content (buttons, title) appears above the expanding color layer */
+.app-header .header-left,
+.app-header .header-center,
+.app-header .header-right {
+  position: relative;
+  z-index: 2;
+}
+
+.header-left h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: #212529;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; /* balanced spacing for center items */
+  flex: 1;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.topic-selector { display: flex; align-items: center; position: relative; z-index: 3; }
+
+/* Topic label styling */
+.topic-label {
+  color: #212529; /* Black in default theme */
+}
+
+.app-header.batch-active .topic-label {
+  color: var(--blue-contrast); /* White in batch theme */
+}
+
+.topic-select {
+  padding: 6px 10px;
+  border-radius: 9999px;
+  border: 1px solid #ced4da;
+  background: white;
+  color: var(--blue);
+  font-weight: 700;
+  font-size: 0.875rem;
+  outline: none;
+}
+.topic-select:focus { box-shadow: 0 4px 12px rgba(2,6,23,0.06); }
+
+/* Ensure selected mode text is consistently styled */
+.topic-dropdown-button {
+  color: var(--blue); /* Match blue theme */
+}
+
+/* Override for batch-active state */
+.app-header.batch-active .topic-dropdown-button {
+  color: var(--blue) !important; /* Force blue text in dark theme */
+}
+
+/* Ensure selected mode text inside oval shape is consistently blue */
+.topic-dropdown-button,
+.topic-select {
+  color: var(--blue) !important; /* Force blue globally */
+}
+
+/* Override for batch-active state */
+.app-header.batch-active .topic-dropdown-button,
+.app-header.batch-active .topic-select {
+  color: var(--blue) !important; /* Ensure blue text remains in dark theme */
+}
+
+/* Adjust placeholder visibility for topic input */
+.topic-select::placeholder {
+  color: var(--blue) !important;
+  opacity: 1; /* Ensure placeholder is fully visible */
+}
+
+/* Override for batch-active state */
+.app-header.batch-active .topic-select::placeholder {
+  color: var(--blue) !important;
+  opacity: 1; /* Ensure placeholder visibility in batch-active */
+}
+
+/* Ensure the dropdown option items inside the topic select are blue text
+   (some browsers use native option list styling but will respect color on option). */
+.topic-select option {
+  color: var(--blue);
+  background: white;
+}
+
+/* Custom topic dropdown styles */
+.topic-dropdown-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 320px;
+  padding: 10px 18px;
+  border-radius: 9999px;
+  border: 1px solid #ced4da;
+  background: white;
+  color: var(--blue);
+  font-weight: 700;
+  text-align: left;
+  position: relative;
+  z-index: 10;
+}
+
+/* Force topic button glyph/text to remain blue even when header is batch-active */
+.app-header.batch-active .topic-dropdown-button {
+  color: var(--blue) !important;
+  background: white;
+  border: 1px solid rgba(2,6,23,0.06);
+}
+
+/* Ensure text content inside the button inherits the blue color */
+.topic-dropdown-button {
+  color: var(--blue) !important;
+}
+
+.app-header.batch-active .topic-dropdown-button * {
+  color: inherit !important;
+}
+
+.topic-dropdown-menu {
+  position: fixed;
+  /* top/left/width set inline from JS to avoid header clipping */
+  min-width: 320px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(2,6,23,0.12);
+  border: 1px solid rgba(2,6,23,0.06);
+  overflow: hidden;
+  z-index: 1400;
+}
+
+.topic-dropdown-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  color: var(--blue);
+  font-weight: 700;
+  background: white;
+}
+.topic-dropdown-item:hover { background: rgba(3,105,161,0.04); }
+.topic-dropdown-item.selected { background: rgba(3,105,161,0.08); }
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem; /* larger gap on right for clear separation */
+}
+
+/* Provide consistent horizontal spacing for direct children in header sections */
+.header-left > *, .header-center > *, .header-right > * {
+  margin-left: 0.25rem;
+  margin-right: 0.25rem;
+}
+
+/* Slightly increase title spacing from controls */
+.header-left h1 { margin-left: 0.25rem; }
 
 .hamburger {
-  background: transparent;
-  border: 1px solid #e5e7eb;
-  width: 40px;
-  height: 40px;
-  border-radius: 6px;
+  background: white;
+  border: 1px solid #dee2e6;
+  color: var(--blue);
+  font-size: 1.25rem;
   cursor: pointer;
-  font-size: 18px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  transition: background 0.2s;
 }
 
-.app-header h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #111827;
+.hamburger:hover {
+  background: rgba(3,105,161,0.04);
 }
 
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
+/* Keep header text (title, labels) white when batch theme is active */
+.app-header.batch-active h1,
+.app-header.batch-active .header-left h1,
+.app-header.batch-active .header-center label span,
+.app-header.batch-active .header-right h1 {
+  color: var(--blue-contrast) !important;
 }
 
-.controls input[type="number"] {
-  padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  width: 120px;
+/* Hamburger should keep white outer button but blue glyphs even in dark header */
+.app-header.batch-active .hamburger {
+  background: white;
+  border: 1px solid rgba(2,6,23,0.06);
+  color: var(--blue);
 }
 
-.controls button {
-  padding: 0.5rem 1rem;
-  background-color: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
+/* Ensure any text-based icons inside header (like the trash emoji) keep contrast when header is dark */
+.app-header.batch-active button.hamburger[aria-label],
+.app-header.batch-active .header-left button,
+.app-header.batch-active .header-right button {
+  background: white;
+  color: var(--blue);
+}
+
+button {
+  padding: 0.5rem 0.875rem;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background: white;
+  color: #212529;
   font-weight: 500;
-  transition: background-color 0.2s;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 0.875rem;
 }
 
-.controls button:hover {
-  background-color: #2563eb;
+button:hover:not(:disabled) {
+  background: #e9ecef;
+  border-color: #adb5bd;
 }
 
-.controls button.secondary {
-  background-color: #6b7280;
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.controls button.secondary:hover {
-  background-color: #4b5563;
+button.primary {
+  background: var(--blue);
+  color: white;
+  border-color: var(--blue);
 }
 
-.controls button.danger {
-  background-color: #ef4444;
+button.primary:hover:not(:disabled) {
+  background: var(--blue-dark);
+  border-color: var(--blue-dark);
 }
 
-.controls button.danger:hover {
-  background-color: #dc2626;
+button.danger {
+  background: #dc3545;
+  color: white;
+  border-color: #dc3545;
 }
 
-.button-group {
-  display: flex;
-  gap: 0.25rem;
+button.danger:hover:not(:disabled) {
+  background: #c82333;
+  border-color: #bd2130;
+}
+
+button.secondary {
+  background: #6c757d;
+  color: white;
+  border-color: #6c757d;
+}
+
+button.secondary:hover:not(:disabled) {
+  background: #5a6268;
+  border-color: #545b62;
+}
+
+.divider {
+  width: 1px;
+  height: 24px;
+  background: #dee2e6;
+  margin: 0 0.5rem;
 }
 
 .main-content {
@@ -101,204 +333,348 @@
   position: relative;
 }
 
-.left-panel {
-  width: 320px;
+.theory-panel {
+  width: 300px;
   background: #ffffff;
-  border-right: 1px solid #e5e7eb;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.left-panel.collapsed { width: 0; min-width: 0; padding: 0; overflow: hidden; }
-.left-panel.collapsed .left-panel-header,
-.left-panel.collapsed .left-panel-body { display:none; }
-
-.left-panel-header {
-  padding: 1rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f9fafb;
-}
-
-.left-panel-body {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-}
-
-.topic-list {
-  list-style: none;
-  margin: 0;
-  padding: 0.5rem;
-  max-height: 180px;
+  border-right: 1px solid #dee2e6;
   overflow-y: auto;
+  transition: width 0.3s ease;
+  flex-shrink: 0;
+  z-index: 50;
 }
 
-.topic-list li {
-  padding: 0.5rem;
-  border-radius: 6px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  margin-bottom: 0.25rem;
-}
-
-.topic-list li.active { background: #eff6ff; }
-
-.topic-content {
-  padding: 0.5rem 0.75rem 1rem 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+.theory-panel.collapsed {
+  width: 0;
   overflow: hidden;
+  border-right: none;
 }
 
-.content-toolbar { display:flex; justify-content:space-between; align-items:center; }
-.content-scroll { overflow-y:auto; padding:0.5rem; background:#fff; border:1px solid #f3f4f6; border-radius:6px; height:calc(100% - 40px); }
-.content-scroll pre { white-space:pre-wrap; font-size:12px; color:#111827; }
+/* Left panel (theory) specific styles - keep collapsed width consistent
+   and remove any extra divider/line when expanded */
+.left-panel {
+  width: 300px;
+  background: #ffffff;
+  border-right: 1px solid #dee2e6;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
 
+.left-panel.collapsed {
+  /* Slide out to the left similar to right panel behavior */
+  width: 300px; /* keep width so content doesn't reflow when animating */
+  transform: translateX(-100%);
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  overflow: hidden;
+  border-right: none;
+  z-index: 60;
+}
 
-.visualizer-container {
+.left-panel .left-panel-header {
+  padding: 12px;
+  margin: 0;
+  background: transparent;
+  border-bottom: none; /* remove horizontal rule */
+}
+
+.left-panel .left-panel-body {
+  padding: 8px;
+}
+
+main {
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  background: #ffffff;
   padding: 1rem;
-  overflow: hidden;
-  position: relative;
 }
 
 .steps-panel {
-  width: 300px;
-  background-color: #ffffff;
-  border-left: 1px solid #e5e7eb;
+  width: 320px;
+  background: #ffffff;
+  border-left: 1px solid #dee2e6;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+  z-index: 50;
 }
 
-.steps-panel.collapsed { width: 0; min-width: 0; padding: 0; overflow: hidden; }
-.steps-panel.collapsed h3, .steps-panel.collapsed .diagram-preview, .steps-panel.collapsed ul { display:none; }
+.steps-panel.collapsed {
+  transform: translateX(100%);
+  position: absolute;
+  right: 0;
+  height: 100%;
+}
 
 .steps-panel h3 {
-  margin: 0;
   padding: 1rem;
+  margin: 0;
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
   font-size: 1rem;
   font-weight: 600;
-  color: #374151;
-  border-bottom: 1px solid #e5e7eb;
-  background-color: #f9fafb;
+  color: #212529;
 }
 
 .diagram-preview {
-  padding: 0.75rem;
-  background: linear-gradient(180deg, #ffffff, #fbfbfb);
-  border-bottom: 1px solid #e5e7eb;
+  background: white;
+  padding: 0.5rem;
+  border-bottom: 1px solid #dee2e6;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 190px;
-  overflow: hidden;
-}
-
-.diagram-preview > div {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.diagram-preview svg {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
-  background: transparent;
-  border-radius: 6px;
+  min-height: 180px;
 }
 
 .steps-panel ul {
   list-style: none;
-  margin: 0;
   padding: 0;
-  flex: 1;
+  margin: 0;
   overflow-y: auto;
+  flex: 1;
 }
 
-.steps-panel li {
+.steps-panel ul li {
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid #dee2e6;
   cursor: pointer;
+  transition: background 0.15s;
   display: flex;
+  align-items: flex-start;
   gap: 0.75rem;
-  transition: background-color 0.15s;
+  font-size: 0.875rem;
 }
 
-.steps-panel li:hover {
-  background-color: #f9fafb;
+.steps-panel ul li:hover {
+  background: #f8f9fa;
 }
 
-.steps-panel li.active {
-  background-color: #eff6ff;
-  border-left: 4px solid #3b82f6;
+.steps-panel ul li.active {
+  background: #e7f5ff;
+  border-left: 3px solid var(--blue);
 }
 
-.steps-panel li.empty {
-  color: #9ca3af;
+.steps-panel ul li.empty {
+  color: #6c757d;
   font-style: italic;
+  cursor: default;
   justify-content: center;
-  padding: 2rem;
+}
+
+.steps-panel ul li.empty:hover {
+  background: transparent;
 }
 
 .step-number {
-  font-size: 0.75rem;
+  background: #e9ecef;
+  color: #495057;
   font-weight: 600;
-  color: #9ca3af;
-  min-width: 1.5rem;
-  padding-top: 0.15rem;
-}
-
-.steps-panel li.active .step-number {
-  color: #3b82f6;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  min-width: 2rem;
+  text-align: center;
+  flex-shrink: 0;
 }
 
 .step-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .step-type {
+  display: block;
+  font-weight: 600;
   font-size: 0.7rem;
+  color: #6c757d;
   text-transform: uppercase;
-  font-weight: 700;
-  color: #6b7280;
-  letter-spacing: 0.025em;
+  margin-bottom: 0.25rem;
+  letter-spacing: 0.5px;
 }
 
 .step-desc {
+  display: block;
   font-size: 0.875rem;
-  color: #1f2937;
-  line-height: 1.25;
+  color: #212529;
+  word-wrap: break-word;
+  line-height: 1.4;
 }
 
 .app-footer {
-  background-color: #ffffff;
   padding: 0.5rem 1rem;
-  border-top: 1px solid #e5e7eb;
+  background: #f8f9fa;
+  border-top: 1px solid #dee2e6;
   text-align: center;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: #6c757d;
+  flex-shrink: 0;
 }
 
-@media (min-width: 768px) {
-  .app-header {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
-  
-  .controls {
-    justify-content: flex-end;
-  }
+input[type="number"],
+input[type="text"],
+textarea {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-family: inherit;
 }
+
+input[type="number"]:focus,
+input[type="text"]:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 0.2rem rgba(3,105,161,0.18);
+}
+
+label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #212529;
+  font-weight: 500;
+}
+
+input[type="range"] {
+  width: 100px;
+  accent-color: var(--blue);
+}
+
+/* Unified Command Bar (glassmorphism) */
+.unified-command-bar {
+  position: relative;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background: linear-gradient(180deg, rgba(3,105,161,0.06), rgba(3,105,161,0.04));
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(3,105,161,0.12);
+  box-shadow: 0 6px 18px rgba(3,105,161,0.06);
+  border-radius: 9999px;
+  z-index: 10;
+  transition: box-shadow 0.15s ease;
+  overflow: visible; /* ensure tooltip pseudo-elements are not clipped */
+}
+
+.unified-command-bar:hover { box-shadow: 0 10px 24px rgba(3,105,161,0.08); }
+.ucb-button { width: 40px; height: 40px; display:flex; align-items:center; justify-content:center; border-radius:9999px; background: white; border: 1px solid rgba(2,6,23,0.06); cursor:pointer; transition:background 0.12s, color 0.12s; color: var(--blue); position: relative; }
+.ucb-button:hover { background: rgba(3,105,161,0.04); }
+
+/* When header is in batch-active (dark) state, ensure toolbar buttons and icons remain visible.
+   Buttons get a translucent light background and dark icons so they contrast against the dark header. */
+.app-header.batch-active .unified-command-bar .ucb-button,
+.app-header.batch-active .unified-command-bar .ucb-mini,
+.app-header.batch-active .unified-command-bar .ucb-chip {
+  /* keep the outer button white but slightly translucent border for contrast */
+  background: white;
+  border: 1px solid rgba(2,6,23,0.06);
+  color: var(--blue);
+  box-shadow: none;
+}
+
+.app-header.batch-active .unified-command-bar .ucb-primary {
+  background: white;
+  color: var(--blue);
+  border: 1px solid var(--blue);
+  box-shadow: 0 6px 16px rgba(3,105,161,0.08);
+}
+
+/* Ensure SVG strokes use the button color (currentColor) so shapes become blue while the button background remains white */
+.unified-command-bar .ucb-button svg,
+.unified-command-bar .ucb-chip svg,
+.unified-command-bar .ucb-primary svg,
+.unified-command-bar .ucb-mini svg {
+  stroke: currentColor;
+}
+
+/* Blue-theme specific: Unified Command Bar (UCB) appearance when header is active
+   Keep a white border, a very subtle shadow (~1% opacity), and a slightly lighter
+   blue background for the bar area (outside the white buttons/inputs). */
+.app-header.batch-active .unified-command-bar {
+  border: 1px solid rgba(255,255,255,0.98);
+  background: linear-gradient(180deg, rgba(3,105,161,0.12), rgba(3,105,161,0.06));
+  box-shadow: 0 2px 6px rgba(2,6,23,0.01);
+}
+
+/* Keep inner elements (buttons/inputs) with white backgrounds so the bar shows through
+   only in the gaps. Preserve the original glassy look for inputs inside the bar. */
+.app-header.batch-active .unified-command-bar .ucb-input,
+.app-header.batch-active .unified-command-bar .ucb-mini,
+.app-header.batch-active .unified-command-bar .ucb-button,
+.app-header.batch-active .unified-command-bar .ucb-chip {
+  background: white;
+}
+
+/* Tooltip for compact icon buttons */
+.unified-command-bar [data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px); /* place below the element */
+  left: 50%;
+  transform: translateX(-50%) translateY(-6px); /* start slightly above, animate down */
+  background: var(--blue-dark); /* darker blue */
+  color: white;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s, transform 0.12s;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.12);
+  z-index: 2000; /* ensure above other elements */
+}
+.unified-command-bar [data-tooltip]:hover::after,
+.unified-command-bar [data-tooltip]:focus::after,
+.unified-command-bar [data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0); /* settle into place below element */
+}
+
+/* Ensure the element that has the tooltip acts as the positioning context
+   so the tooltip centers on that element instead of the whole toolbar. */
+.unified-command-bar [data-tooltip] {
+  position: relative;
+}
+
+/* Small labelled buttons next to input */
+.ucb-mini {
+  width: auto;
+  height: 28px;
+  min-width: 48px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: white;
+  border: 1px solid rgba(2,6,23,0.06);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(2,6,23,0.04);
+  color: var(--blue); /* blue text */
+  font-size: 12px;
+  font-weight: 600;
+}
+.ucb-mini-label { line-height: 1; }
+.ucb-sep { width:1px; height:28px; background: rgba(255,255,255,0.12); border-radius:2px; }
+.ucb-input { padding-left:12px; padding-right:36px; height:36px; width:160px; border-radius:9999px; border:1px solid rgba(2,6,23,0.08); background: white; outline:none; transition:width 0.2s, box-shadow 0.12s; color: var(--blue); }
+.ucb-input::placeholder { color: rgba(2,6,23,0.4); }
+.ucb-input:focus { width:220px; box-shadow:0 8px 24px rgba(2,6,23,0.08); }
+
+/* Ensure input text stays blue even when header applies a white text color in batch-active */
+.app-header.batch-active .unified-command-bar .ucb-input { color: var(--blue) !important; }
+.app-header.batch-active .unified-command-bar .ucb_input::placeholder { color: rgba(2,6,23,0.38) !important; }
+.ucb-primary { width:44px; height:44px; background:var(--blue); color:white; display:flex; align-items:center; justify-content:center; border-radius:9999px; border:none; cursor:pointer; box-shadow: 0 6px 16px rgba(3,105,161,0.18); }
+.ucb-chip { display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:9999px; background: white; border: 1px solid rgba(2,6,23,0.06); color: var(--blue); cursor:pointer; box-shadow: 0 2px 6px rgba(2,6,23,0.04); }
+
+/* hide original controls to keep single-line look */
+.controls { display: none !important; }

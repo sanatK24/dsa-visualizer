@@ -70,7 +70,7 @@ export default function MatrixChainVisualizer({ p, onStepsUpdate, onPreviewSvg, 
   const n = dims.length - 1;
   const tree = useMemo(() => buildParenthesisTree(s, 1, n), [s]);
 
-  const layout = useMemo(() => layoutTree(tree), [tree]);
+  const layout = useMemo(() => tree ? layoutTree(tree) : { nodes: [], edges: [], minX: 0, maxX: 400, minY: 0, maxY: 200, nodeRadius: 12 }, [tree]);
   const parenthesization = parenthesizationFromS(s, 1, n);
 
   // Build level-wise explanation steps (compatible with Step type)
@@ -182,7 +182,6 @@ export default function MatrixChainVisualizer({ p, onStepsUpdate, onPreviewSvg, 
     if (!onStepsUpdate) return;
     const initialSteps = computeStepsForDims(dims);
     onStepsUpdate(initialSteps);
-    if (onDimensionsChange) onDimensionsChange(dims);
     try {
       const { s: ss } = matrixChainOrder(dims);
       const treePreview = buildParenthesisTree(ss, 1, dims.length - 1);
@@ -223,7 +222,7 @@ export default function MatrixChainVisualizer({ p, onStepsUpdate, onPreviewSvg, 
                 if (onPreviewSvg) onPreviewSvg(svg);
               } catch (err) {}
             }}>Compute</button>
-            <button onClick={() => { setPInput(defaultDims.join(', ')); setDims(defaultDims); setError(null); }} className="secondary">Reset</button>
+            <button onClick={() => { setPInput(defaultDims.join(', ')); setDims(defaultDims); setError(null); if (onDimensionsChange) onDimensionsChange(defaultDims); }} className="secondary">Reset</button>
           </div>
           {error && <div style={{ color: 'crimson', marginTop: 8 }}>{error}</div>}
         </div>

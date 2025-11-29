@@ -13,6 +13,7 @@ function App() {
   const [currentStepIndex, setCurrentStepIndex] = useState(-1);
   const [inputValue, setInputValue] = useState('');
   const [multiInput, setMultiInput] = useState('');
+  const [batchOp, setBatchOp] = useState<'INSERT' | 'DELETE'>('INSERT');
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(1000);
   const [mode, setMode] = useState<'rbt' | 'mcm'>('rbt');
@@ -21,8 +22,38 @@ function App() {
   const [rightOpen, setRightOpen] = useState(true);
   const [mcmPreviewSvg, setMcmPreviewSvg] = useState<string | null>(null);
   const [showModeDropdown, setShowModeDropdown] = useState(false);
+  const [showTopicDropdown, setShowTopicDropdown] = useState(false);
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>('red_black_tree');
+  const topicBtnRef = useRef<HTMLButtonElement | null>(null);
+  const topicMenuRef = useRef<HTMLDivElement | null>(null);
+  const [topicMenuPos, setTopicMenuPos] = useState<{ left: number; top: number; width: number } | null>(null);
+  // close topic menu on outside click
+  useEffect(() => {
+    if (!showTopicDropdown) return;
+    // compute and set menu position so it uses fixed coords (avoids header clipping)
+    const btn = topicBtnRef.current;
+    if (btn) {
+      const r = btn.getBoundingClientRect();
+      setTopicMenuPos({ left: Math.round(r.left), top: Math.round(r.bottom + 8), width: Math.round(r.width) });
+    }
+
+    const onDocClick = (e: MouseEvent) => {
+      const btn = topicBtnRef.current;
+      const menu = topicMenuRef.current;
+      if (!btn || !menu) return;
+      const target = e.target as Node;
+      if (!btn.contains(target) && !menu.contains(target)) {
+        setShowTopicDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [showTopicDropdown]);
   const [mcmDimensions, setMcmDimensions] = useState<number[]>([4, 10, 3, 12, 20, 7]);
+  const headerRef = useRef<HTMLElement | null>(null);
+  const batchBtnRef = useRef<HTMLButtonElement | null>(null);
+  const layerRef = useRef<HTMLDivElement | null>(null);
+  const [batchThemeActive, setBatchThemeActive] = useState(false);
 
   useEffect(() => {
     // when switching mode, open the steps panel and switch left topic
@@ -30,6 +61,32 @@ function App() {
     if (mode === 'mcm') setSelectedTopicId('matrix_chain');
     else setSelectedTopicId('red_black_tree');
   }, [mode]);
+
+  // Ensure the color layer is reset if window resizes
+  useEffect(() => {
+    const onResize = () => {
+      if (layerRef.current) {
+        // shrink the circle back if resize happens
+        layerRef.current.style.transform = 'translate(-50%, -50%) scale(0)';
+      }
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // Ensure the steps shown match the current mode:
+  // - when switching to RBT, load steps from the tree
+  // - when switching to MCM, clear steps (MCM visualizer will populate via callback)
+  useEffect(() => {
+    if (mode === 'rbt') {
+      const all = tree.getAllSteps();
+      setSteps([...all]);
+      setCurrentStepIndex(all.length > 0 ? Math.min(currentStepIndex, all.length - 1) : -1);
+    } else {
+      setSteps([]);
+      setCurrentStepIndex(-1);
+    }
+  }, [mode, tree]);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -162,6 +219,74 @@ function App() {
     if (firstNewIndex >= 0) setCurrentStepIndex(firstNewIndex);
     setIsPlaying(true);
     setMultiInput('');
+  };
+
+  // Compute scale needed to cover the header area from center point (cxLocal, cyLocal)
+  const computeScaleForHeader = (cxLocal: number, cyLocal: number, diameter: number) => {
+    const header = headerRef.current;
+    if (!header) return 1;
+    const hr = header.getBoundingClientRect();
+    const dx = Math.max(cxLocal, hr.width - cxLocal);
+    const dy = Math.max(cyLocal, hr.height - cyLocal);
+    const far = Math.hypot(dx, dy);
+    const requiredDiameter = far * 2;
+    const scale = Math.max(1, (requiredDiameter / diameter) * 1.05);
+    return scale;
+  };
+
+  const openBatchWithAnimation = () => {
+    setShowBatchInput(true);
+    setBatchThemeActive(true);
+    // position the layer at the batch button center and expand
+    requestAnimationFrame(() => {
+      const btn = batchBtnRef.current;
+      const layer = layerRef.current;
+      if (!btn || !layer) return;
+      const rect = btn.getBoundingClientRect();
+      const diameter = Math.max(rect.width, rect.height, 48);
+      // position layer relative to header (local coords)
+      const headerRect = headerRef.current!.getBoundingClientRect();
+      const cxLocal = rect.left - headerRect.left + rect.width / 2;
+      const cyLocal = rect.top - headerRect.top + rect.height / 2;
+      layer.style.width = `${diameter}px`;
+      layer.style.height = `${diameter}px`;
+      layer.style.left = `${cxLocal}px`;
+      layer.style.top = `${cyLocal}px`;
+      // ensure starting from scale(0)
+      layer.style.transform = 'translate(-50%, -50%) scale(0)';
+      // force reflow
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      layer.offsetWidth;
+      const scale = computeScaleForHeader(cxLocal, cyLocal, diameter);
+      layer.classList.add('active');
+      layer.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    });
+  };
+
+  const closeBatchWithAnimation = (immediate = false) => {
+    const layer = layerRef.current;
+    if (!layer) {
+      setShowBatchInput(false);
+      setBatchThemeActive(false);
+      return;
+    }
+    if (immediate) {
+      layer.classList.remove('active');
+      layer.style.transform = 'translate(-50%, -50%) scale(0)';
+      setBatchThemeActive(false);
+      setShowBatchInput(false);
+      return;
+    }
+    // shrink the layer back to the button
+    layer.style.transform = 'translate(-50%, -50%) scale(0)';
+    // after transition ends, clear state
+    const onEnd = () => {
+      layer.classList.remove('active');
+      setBatchThemeActive(false);
+      setShowBatchInput(false);
+      layer.removeEventListener('transitionend', onEnd);
+    };
+    layer.addEventListener('transitionend', onEnd);
   };
 
   const handleReset = () => {
@@ -466,8 +591,8 @@ function App() {
             const pageIndex = Math.floor(i / stepsPerPage);
             const indexInPage = i % stepsPerPage;
             
-            if (pageIndex !== currentPage || i === 0) {
-              if (i > 0 || globalPageIndex > 0) pdf.addPage();
+            if (pageIndex !== currentPage || (globalPageIndex === 0 && i === 0)) {
+              if (globalPageIndex > 0 || i > 0) pdf.addPage();
               pdf.setFont("helvetica", "bold");
               pdf.setFontSize(18);
               pdf.setTextColor(20, 20, 20);
@@ -877,10 +1002,48 @@ function App() {
 
   return (
     <div className="app-container">
-      <header className="app-header">
+      <header ref={headerRef} className={`app-header ${batchThemeActive ? 'batch-active' : ''}`}>
+        <div ref={layerRef} className="batch-color-layer" />
         <div className="header-left">
           <button className="hamburger" onClick={() => setLeftOpen(v => !v)} aria-label="Toggle Theory Panel">☰</button>
           <h1>DSA visualizer</h1>
+        </div>
+        <div className="header-center">
+          <div className="topic-selector">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="topic-label" style={{ fontSize: '0.9rem', fontWeight: 700 }}>Topic</span>
+              <div style={{ position: 'relative' }}>
+                <button
+                  ref={topicBtnRef}
+                  type="button"
+                  className="topic-dropdown-button topic-select"
+                  aria-haspopup="listbox"
+                  aria-expanded={showTopicDropdown}
+                  onClick={() => setShowTopicDropdown(v => !v)}
+                  style={{ color: 'var(--blue)' }}
+                >
+                  {selectedTopicId === 'matrix_chain' ? 'Matrix Chain' : 'Red-Black Tree'}
+                </button>
+
+                {showTopicDropdown && (
+                  <div
+                    ref={topicMenuRef}
+                    role="listbox"
+                    className="topic-dropdown-menu"
+                    tabIndex={-1}
+                    style={{
+                      left: topicMenuPos ? `${topicMenuPos.left}px` : undefined,
+                      top: topicMenuPos ? `${topicMenuPos.top}px` : undefined,
+                      width: topicMenuPos ? `${topicMenuPos.width}px` : undefined,
+                    }}
+                  >
+                    <div role="option" className={`topic-dropdown-item ${selectedTopicId === 'red_black_tree' ? 'selected' : ''}`} onClick={() => { setSelectedTopicId('red_black_tree'); setShowTopicDropdown(false); }}>Red-Black Tree</div>
+                    <div role="option" className={`topic-dropdown-item ${selectedTopicId === 'matrix_chain' ? 'selected' : ''}`} onClick={() => { setSelectedTopicId('matrix_chain'); setShowTopicDropdown(false); }}>Matrix Chain</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
         <div className="controls">
           {mode === 'rbt' && (
@@ -892,54 +1055,70 @@ function App() {
                 placeholder="Enter number"
                 onKeyDown={(e) => e.key === 'Enter' && handleInsert()}
               />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ display: showBatchInput ? 'block' : 'none' }}>
-                  <input
-                    type="text"
-                    value={multiInput}
-                    onChange={(e) => setMultiInput(e.target.value)}
-                    placeholder="Insert multiple: 5,10,15 or 5 10 15"
-                    style={{ width: 220, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
-                    onKeyDown={(e) => e.key === 'Enter' && handleInsertBatch()}
-                  />
-                </div>
-                <div className="button-group">
-                  <button onClick={handleInsert}>Insert</button>
-                  <button onClick={handleDelete} className="secondary">Delete</button>
-                  <button onClick={handleSearch} className="secondary">Search</button>
-                  {!showBatchInput ? (
-                    <button onClick={() => setShowBatchInput(true)} className="secondary">Batch Operations</button>
-                  ) : (
-                    <>
-                      <button onClick={handleInsertBatch} className="secondary">Insert Batch</button>
-                      <button onClick={handleDeleteBatch} className="secondary">Delete Batch</button>
-                      <button onClick={() => { setShowBatchInput(false); setMultiInput(''); }} className="secondary">Close</button>
-                    </>
-                  )}
-                </div>
-              </div>
+              <button onClick={handleInsert} className="primary">Insert</button>
+              <button onClick={handleDelete} className="secondary">Delete</button>
+              <button onClick={handleSearch} className="secondary">Search</button>
+              <button onClick={() => { if (!showBatchInput) openBatchWithAnimation(); else closeBatchWithAnimation(); }} className="secondary">Batch Operations</button>
             </>
           )}
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <button onClick={() => setShowModeDropdown(v => !v)} className="secondary">{mode === 'rbt' ? 'RBT' : 'Matrix Chain'} ▾</button>
             {showModeDropdown && (
-              <div style={{ position: 'absolute', top: '2.4rem', left: 0, background: 'white', border: '1px solid #ddd', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', zIndex: 40 }}>
-                <div style={{ padding: 8, cursor: 'pointer' }} onClick={() => { setMode('rbt'); setShowModeDropdown(false); setMcmPreviewSvg(null); }}>RBT</div>
+              <div style={{ position: 'absolute', top: '2.4rem', left: 0, background: 'white', border: '1px solid #ddd', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', zIndex: 40, borderRadius: 4 }}>
+                <div style={{ padding: 8, cursor: 'pointer', borderBottom: '1px solid #eee' }} onClick={() => { setMode('rbt'); setShowModeDropdown(false); setMcmPreviewSvg(null); }}>RBT</div>
                 <div style={{ padding: 8, cursor: 'pointer' }} onClick={() => { setMode('mcm'); setShowModeDropdown(false); /* hide steps panel until MCM pushes steps */ }}>Matrix Chain</div>
               </div>
             )}
           </div>
           
+          {showBatchInput && (
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => closeBatchWithAnimation()}>
+              <div style={{ background: 'white', padding: '2rem', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+                <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Batch Operations</h3>
+                <p style={{ fontSize: '0.875rem', color: '#6c757d', marginBottom: '1rem' }}>Enter numbers separated by commas or spaces</p>
+
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input type="radio" name="batchOp" checked={batchOp === 'INSERT'} onChange={() => setBatchOp('INSERT')} />
+                    <span>Insert</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input type="radio" name="batchOp" checked={batchOp === 'DELETE'} onChange={() => setBatchOp('DELETE')} />
+                    <span>Delete</span>
+                  </label>
+                </div>
+
+                <input
+                  type="text"
+                  value={multiInput}
+                  onChange={(e) => setMultiInput(e.target.value)}
+                  placeholder="e.g., 5,10,15 or 5 10 15"
+                  style={{ width: '100%', padding: '0.75rem', border: '1px solid #ced4da', borderRadius: 4, marginBottom: '1rem', fontSize: '0.875rem' }}
+                />
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                  <button onClick={() => {
+                    if (batchOp === 'INSERT') handleInsertBatch();
+                    else handleDeleteBatch();
+                    closeBatchWithAnimation();
+                  }}>{batchOp === 'INSERT' ? 'Apply Batch Insert' : 'Apply Batch Delete'}</button>
+                  <button onClick={() => { closeBatchWithAnimation(); setMultiInput(''); }} className="secondary">Close</button>
+                </div>
+              </div>
+            </div>
+          )}
           
-          <div className="divider"></div>
-          <button onClick={handleSkipBack} disabled={steps.length === 0 || currentStepIndex <= 0}>Skip Back</button>
-          <button onClick={handleStepBack} disabled={currentStepIndex < 0}>Prev</button>
-          <button onClick={() => setIsPlaying(!isPlaying)}>
-            {isPlaying ? 'Pause' : 'Play'}
-          </button>
-          <button onClick={handleStepForward} disabled={currentStepIndex >= steps.length - 1}>Next</button>
-          <button onClick={handleSkipForward} disabled={steps.length === 0 || currentStepIndex >= steps.length - 1}>Skip Forward</button>
-          <div className="divider"></div>
+          {steps.length > 0 && (
+            <>
+              <button onClick={handleSkipBack} disabled={currentStepIndex <= 0} className="primary">Skip Back</button>
+              <button onClick={handleStepBack} disabled={currentStepIndex < 0} className="primary">Prev</button>
+              <button onClick={() => setIsPlaying(!isPlaying)} className="primary">
+                {isPlaying ? 'Pause' : 'Play'}
+              </button>
+              <button onClick={handleStepForward} disabled={currentStepIndex >= steps.length - 1} className="primary">Next</button>
+              <button onClick={handleSkipForward} disabled={currentStepIndex >= steps.length - 1} className="primary">Skip Forward</button>
+            </>
+          )}
+          
           <button onClick={handleReset} className="danger">Reset</button>
           <button onClick={mode === 'rbt' ? handleExport : handleExportMCM} className="secondary">Export</button>
           <label>
@@ -954,10 +1133,80 @@ function App() {
             />
           </label>
         </div>
+        {/* Unified Command Bar moved into header for non-floating navbar placement */}
+        <nav className="unified-command-bar" role="toolbar" aria-label="Unified Command Bar">
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button data-tooltip="Delete" title="Delete" onClick={handleDelete} aria-label="Delete" className="ucb-mini">
+              <span className="ucb-mini-label">Delete</span>
+            </button>
+            <input className="ucb-input" value={inputValue} onChange={(e) => setInputValue(e.target.value)} placeholder="Value..." onKeyDown={(e) => e.key === 'Enter' && handleInsert()} aria-label="Value input" />
+            <button data-tooltip="Insert" title="Insert" onClick={handleInsert} aria-label="Insert" className="ucb-mini">
+              <span className="ucb-mini-label">Insert</span>
+            </button>
+          </div>
+
+
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button className="ucb-button" data-tooltip="Skip Back" title="Skip Back" onClick={handleSkipBack} aria-hidden={steps.length===0}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="11 19 2 12 11 5"></polyline>
+                <line x1="22" y1="19" x2="13" y2="12"></line>
+              </svg>
+            </button>
+            <button className="ucb-button" data-tooltip="Prev" title="Prev" onClick={handleStepBack} aria-hidden={steps.length===0}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <button className="ucb-primary" data-tooltip={isPlaying ? 'Pause' : 'Play'} title="Play/Pause" onClick={() => setIsPlaying(v => !v)}>
+              {isPlaying ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              )}
+            </button>
+            <button className="ucb-button" data-tooltip="Next" title="Next" onClick={handleStepForward} aria-hidden={steps.length===0}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: 'scaleX(-1)' }}>
+                <polyline points="11 19 2 12 11 5"></polyline>
+                <line x1="22" y1="19" x2="13" y2="12"></line>
+              </svg>
+            </button>
+            <button className="ucb-button" data-tooltip="Skip Forward" title="Skip Forward" onClick={handleSkipForward} aria-hidden={steps.length===0}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="2" y1="12" x2="11" y2="12"></line><polyline points="13 19 22 12 13 5"></polyline></svg>
+            </button>
+          </div>
+
+          <button className="ucb-chip" data-tooltip="Speed" onClick={() => {
+            const presets = [2000, 1000, 500];
+            const idx = presets.indexOf(speed);
+            const next = presets[(idx + 1) % presets.length];
+            setSpeed(next);
+          }}>{Math.round(1000 / speed * 10) / 10}x
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 4 }}><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+
+          <div className="ucb-sep" />
+
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <button className="ucb-button" data-tooltip="Search" title="Search" onClick={handleSearch} aria-label="Search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
+            <button ref={batchBtnRef} type="button" className="ucb-mini" onClick={(e) => { e.stopPropagation(); if (!showBatchInput) openBatchWithAnimation(); else closeBatchWithAnimation(); }} aria-label="Batch">
+              <span className="ucb-mini-label">Batch</span>
+            </button>
+            <button className="ucb-button" data-tooltip="Export" title="Export" onClick={() => { if (mode === 'rbt') handleExport(); else handleExportMCM(); }} aria-label="Export">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </button>
+          </div>
+        </nav>
         <div className="header-right">
           <button className="hamburger" onClick={() => setRightOpen(v => !v)} aria-label="Toggle Steps Panel">☰</button>
         </div>
       </header>
+      
+      
       
       <div className="main-content">
         <LeftPanel collapsed={!leftOpen} selectedTopicId={selectedTopicId} onTopicChange={(id) => setSelectedTopicId(id)} mode={mode} />
@@ -969,7 +1218,7 @@ function App() {
               onStepsUpdate={(s: Step[]) => { setSteps(s); setCurrentStepIndex(s.length > 0 ? 0 : -1); setIsPlaying(false); }}
               onPreviewSvg={(svg) => setMcmPreviewSvg(svg)}
               activeStep={currentStep}
-              onDimensionsChange={(dims) => setMcmDimensions(dims)}
+              onDimensionsChange={(dims: number[]) => setMcmDimensions(dims)}
             />
           )}
         </main>

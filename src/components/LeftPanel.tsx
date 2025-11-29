@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { typesetElementById } from '../utils/mathjax';
 
 type Topic = {
   id: string;
@@ -103,8 +102,10 @@ export default function LeftPanel({ collapsed = false, selectedTopicId, onTopicC
   useEffect(() => {
     if (!expanded) return;
     if (!contentsMap[expanded]) return;
-    // use the shared helper to typeset only the expanded topic content
-    typesetElementById(`topic-content-${expanded}`).catch(() => {});
+    try {
+      const ev = new CustomEvent('leftpanel-typeset', { detail: { id: `topic-content-${expanded}` } });
+      window.dispatchEvent(ev as any);
+    } catch {}
   }, [expanded, contentsMap]);
 
   return (
@@ -112,8 +113,8 @@ export default function LeftPanel({ collapsed = false, selectedTopicId, onTopicC
       <div className="left-panel-header">
         <h3>Theory</h3>
       </div>
-      <div className="left-panel-body" style={{ overflowX: 'hidden', padding: '12px 8px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="left-panel-body" style={{ overflowX: 'hidden', padding: '8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {(() => {
             const filtered = topics.filter(t => {
               if (!mode) return true;
@@ -124,7 +125,7 @@ export default function LeftPanel({ collapsed = false, selectedTopicId, onTopicC
             return filtered.map(t => {
               const isExpanded = expanded === t.id;
               return (
-                <div key={t.id} style={{ borderRadius: 12, background: isExpanded ? '#ffffff' : '#f8fafc', color: '#111827', boxShadow: isExpanded ? '0 6px 18px rgba(15,23,42,0.06)' : 'none', overflow: 'hidden', border: isExpanded ? '1px solid #e6edf3' : '1px solid transparent' }}>
+                <div key={t.id} style={{ borderRadius: 8, background: isExpanded ? '#ffffff' : '#f8fafc', color: '#111827', boxShadow: isExpanded ? '0 4px 12px rgba(15,23,42,0.06)' : 'none', overflow: 'hidden', border: isExpanded ? '1px solid #e6edf3' : '1px solid transparent', maxWidth: '100%' }}>
                   <button
                     aria-expanded={isExpanded}
                     onClick={() => {
@@ -138,32 +139,32 @@ export default function LeftPanel({ collapsed = false, selectedTopicId, onTopicC
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      padding: '14px 16px',
+                      padding: '10px 12px',
                       background: 'transparent',
                       border: 'none',
                       cursor: 'pointer',
                       textAlign: 'left'
                     }}
                   >
-                    <div style={{ fontSize: 15, fontWeight: 600 }}>{t.title}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {t.pdf ? <div style={{ fontSize: 12, padding: '4px 6px', borderRadius: 6, background: '#eef2f7', color: '#6b7280' }}>PDF</div> : null}
-                      <div style={{ width: 34, height: 34, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', border: '1px solid #e6edf3' }}>
-                        <span style={{ fontSize: 18, lineHeight: 1, color: '#111827' }}>{isExpanded ? '−' : '+'}</span>
+                    <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 8 }}>{t.title}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      {t.pdf ? <div style={{ fontSize: 10, padding: '2px 4px', borderRadius: 4, background: '#eef2f7', color: '#6b7280' }}>PDF</div> : null}
+                      <div style={{ width: 24, height: 24, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', border: '1px solid #e6edf3' }}>
+                        <span style={{ fontSize: 16, lineHeight: 1, color: '#111827' }}>{isExpanded ? '−' : '+'}</span>
                       </div>
                     </div>
                   </button>
                   {isExpanded ? (
-                    <div style={{ padding: 16, borderTop: '1px solid #eef2f7', background: '#ffffff' }}>
-                      <div style={{ marginBottom: 8 }}><strong style={{ color: '#111827' }}>{t.title}</strong></div>
-                      <div id={`topic-content-${t.id}`} style={{ maxHeight: 300, overflowY: 'auto', paddingRight: 6 }}>
+                    <div style={{ padding: 10, borderTop: '1px solid #eef2f7', background: '#ffffff', maxWidth: '100%', boxSizing: 'border-box' }}>
+                      <div style={{ marginBottom: 6, fontSize: 12 }}><strong style={{ color: '#111827' }}>{t.title}</strong></div>
+                      <div id={`topic-content-${t.id}`} style={{ maxHeight: 200, overflowY: 'auto', overflowX: 'hidden', paddingRight: 4, fontSize: '0.8rem', wordWrap: 'break-word', maxWidth: '100%' }}>
                         {contentsMap[t.id] ? (
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{contentsMap[t.id]}</ReactMarkdown>
                         ) : (
                           <div style={{ color: '#6b7280' }}>Loading...</div>
                         )}
                       </div>
-                      {t.pdf ? <div style={{ marginTop: 12 }}><a style={{ color: '#0366d6' }} href={t.pdf} target="_blank" rel="noreferrer">Open PDF</a></div> : null}
+                      {t.pdf ? <div style={{ marginTop: 8, fontSize: '0.8rem' }}><a style={{ color: '#0366d6' }} href={t.pdf} target="_blank" rel="noreferrer">Open PDF</a></div> : null}
                     </div>
                   ) : null}
                 </div>
@@ -176,4 +177,50 @@ export default function LeftPanel({ collapsed = false, selectedTopicId, onTopicC
   );
 }
 
-// No global event plumbing needed here — components call the shared helper directly.
+// Load MathJax dynamically and typeset expanded content when available
+function ensureMathJax(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if ((window as any).MathJax) return resolve();
+    // Configure MathJax before loading
+    (window as any).MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] }
+    };
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('Failed to load MathJax'));
+    document.head.appendChild(s);
+  });
+}
+
+// When expanded content is loaded or expanded changes, typeset the math in that area
+// (This effect cannot be inside the component due to hooks rules; we will attach a global observer)
+const _leftPanelMathObserver = (function () {
+  let initialized = false;
+  if (typeof window === 'undefined') return null as any;
+  return {
+    init: () => {
+      if (initialized) return;
+      initialized = true;
+      // Watch for custom event to typeset a specific element id
+      window.addEventListener('leftpanel-typeset', async (ev: any) => {
+        const detail = ev.detail as { id: string } | undefined;
+        if (!detail || !detail.id) return;
+        try {
+          await ensureMathJax();
+          const el = document.getElementById(detail.id);
+          if (el && (window as any).MathJax && (window as any).MathJax.typesetPromise) {
+            (window as any).MathJax.typesetPromise([el]).catch(() => {});
+          }
+        } catch (err) {
+          // ignore
+        }
+      });
+    }
+  };
+})();
+
+// Initialize the global observer immediately
+try { _leftPanelMathObserver && _leftPanelMathObserver.init(); } catch {}

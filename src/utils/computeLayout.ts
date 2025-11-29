@@ -1,102 +1,93 @@
-import type { RBNode } from '../core/RBTree';
+export interface TreeNode {
+  id: number;
+  value: number;
+  color: 'RED' | 'BLACK';
+  left: TreeNode | null;
+  right: TreeNode | null;
+}
 
 export interface LayoutNode {
   id: number;
   value: number;
-  color: string;
+  color: 'RED' | 'BLACK';
   x: number;
   y: number;
-  parentId: number | null;
-  leftId: number | null;
-  rightId: number | null;
 }
 
-export interface Layout {
+export interface LayoutEdge {
+  from: number;
+  to: number;
+}
+
+export interface TreeLayout {
   nodes: LayoutNode[];
-  edges: { from: number; to: number }[];
-  width: number;
-  height: number;
+  edges: LayoutEdge[];
 }
 
-// Compute a simple inorder-based layout for a BST-like tree.
-export function computeTreeLayout(root: RBNode | null, width = 1000, height = 500): Layout {
+export function computeTreeLayout(
+  root: TreeNode | null,
+  width: number,
+  height: number
+): TreeLayout {
   const nodes: LayoutNode[] = [];
-  const edges: { from: number; to: number }[] = [];
+  const edges: LayoutEdge[] = [];
 
-  if (!root) return { nodes, edges, width, height };
+  if (!root) {
+    return { nodes, edges };
+  }
 
-  // Subtree-width layout matching TreeVisualizer
-  const margin = 40;
-
-  const countNodes = (n: RBNode | null): number => {
-    if (!n) return 1; // NIL counts as 1
-    return countNodes(n.left) + countNodes(n.right);
+  // Calculate tree depth for spacing
+  const getDepth = (node: TreeNode | null): number => {
+    if (!node) return 0;
+    return 1 + Math.max(getDepth(node.left), getDepth(node.right));
   };
 
-  const traverse = (n: RBNode | null, depth: number, leftBound: number, rightBound: number, parentId: number | null, isLeft: boolean) => {
-    const y = 50 + depth * 60;
-    const midX = (leftBound + rightBound) / 2;
+  const depth = getDepth(root);
+  const verticalSpacing = height / (depth + 1);
 
-    if (!n) {
-        // Add NIL node
-        if (parentId !== null) {
-            const id = -((parentId * 10) + (isLeft ? 1 : 2));
-            nodes.push({
-                id,
-                value: NaN,
-                color: 'BLACK',
-                x: midX, y,
-                parentId,
-                leftId: null, rightId: null
-            });
-        }
-        return;
-    }
+  // Position nodes using in-order traversal for horizontal spacing
+  let inOrderIndex = 0;
+  const nodePositions = new Map<number, { x: number; y: number }>();
 
+  const countNodes = (node: TreeNode | null): number => {
+    if (!node) return 0;
+    return 1 + countNodes(node.left) + countNodes(node.right);
+  };
+
+  const totalNodes = countNodes(root);
+  const horizontalSpacing = width / (totalNodes + 1);
+
+  const traverse = (node: TreeNode | null, level: number): void => {
+    if (!node) return;
+
+    // In-order traversal: left, root, right
+    traverse(node.left, level + 1);
+
+    inOrderIndex++;
+    const x = inOrderIndex * horizontalSpacing;
+    const y = (level + 1) * verticalSpacing;
+
+    nodePositions.set(node.id, { x, y });
     nodes.push({
-      id: n.id,
-      value: n.value,
-      color: n.color,
-      x: midX,
+      id: node.id,
+      value: node.value,
+      color: node.color,
+      x,
       y,
-      parentId: n.parentId ?? null,
-      leftId: n.left ? n.left.id : null,
-      rightId: n.right ? n.right.id : null,
     });
 
-    const leftCount = countNodes(n.left);
-    const rightCount = countNodes(n.right);
-    const totalCount = leftCount + rightCount;
-    const splitRatio = totalCount > 0 ? leftCount / totalCount : 0.5;
-    const splitX = leftBound + (rightBound - leftBound) * splitRatio;
+    // Add edges
+    if (node.left) {
+      edges.push({ from: node.id, to: node.left.id });
+    }
+    if (node.right) {
+      edges.push({ from: node.id, to: node.right.id });
+    }
 
-    traverse(n.left, depth + 1, leftBound, splitX, n.id, true);
-    traverse(n.right, depth + 1, splitX, rightBound, n.id, false);
+    traverse(node.right, level + 1);
   };
 
-  traverse(root, 0, margin, width - margin, null, false);
+  traverse(root, 0);
 
-  const nodeMap = new Map<number, LayoutNode>();
-  nodes.forEach(n => nodeMap.set(n.id, n));
-
-  // Build edges from parent-child IDs
-  nodes.forEach(n => {
-    if (n.id > 0) {
-        if (n.leftId) edges.push({ from: n.id, to: n.leftId });
-        else {
-            // Edge to Left NIL
-            const nilId = -((n.id * 10) + 1);
-            if (nodeMap.has(nilId)) edges.push({ from: n.id, to: nilId });
-        }
-
-        if (n.rightId) edges.push({ from: n.id, to: n.rightId });
-        else {
-            // Edge to Right NIL
-            const nilId = -((n.id * 10) + 2);
-            if (nodeMap.has(nilId)) edges.push({ from: n.id, to: nilId });
-        }
-    }
-  });
-
-  return { nodes, edges, width, height };
+  return { nodes, edges };
 }

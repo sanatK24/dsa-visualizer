@@ -1,5 +1,4 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
-import { typesetElementById } from '../utils/mathjax';
 import type { FC } from 'react';
 import type { RBNode, Step } from '../core/RBTree';
 
@@ -37,7 +36,10 @@ const TreeVisualizer: FC<TreeVisualizerProps> = ({ step, width, height, showDesc
   // When the step description overlay appears, request MathJax typesetting for it
   useEffect(() => {
     if (!showDescription || !step) return;
-    typesetElementById(`step-desc-${step.id}`).catch(() => {});
+    try {
+      const ev = new CustomEvent('leftpanel-typeset', { detail: { id: `step-desc-${step.id}` } });
+      window.dispatchEvent(ev as any);
+    } catch {}
   }, [showDescription, step?.id]);
 
   const handleWheel = (e: React.WheelEvent) => {

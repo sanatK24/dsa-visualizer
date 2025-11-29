@@ -614,8 +614,5 @@ export class RBTree {
       this.steps = [];
       this.nextNodeId = 1;
       this.stepCounter = 1;
-      this.operations = [];
-      this.operationCounter = 1;
-      this.currentOperationId = null;
   }
 }
