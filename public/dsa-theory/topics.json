@@ -1,0 +1,6 @@
+[
+  { "id": "red_black_tree", "title": "Red-Black Tree Overview", "md": "/dsa-theory/red_black_tree.md", "pdf": "/data/rbt_notes.pdf", "category": "rbt" },
+  { "id": "rotations", "title": "Rotations (Left / Right)", "md": "/dsa-theory/rotations.md", "pdf": "/data/rbt_rotations.pdf", "category": "rbt" },
+  { "id": "properties", "title": "RBT Properties", "md": "/dsa-theory/properties.md", "pdf": "/data/rbt_properties.pdf", "category": "rbt" },
+  { "id": "matrix_chain", "title": "Matrix Chain Parenthesization", "md": "/dsa-theory/matrix_chain.md", "pdf": "/data/matrix_chain_notes.pdf", "category": "mcm" }
+]
